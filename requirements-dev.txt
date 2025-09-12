@@ -1,5 +1,3 @@
--r requirements.txt
-
 # Development tools
 black==23.11.0
 isort==5.12.0
