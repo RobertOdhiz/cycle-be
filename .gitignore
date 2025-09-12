@@ -1,0 +1,136 @@
+# ======================================
+# Python
+# ======================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pyc
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.dll
+*.dylib
+
+# C extensions
+*.c
+*.cpp
+
+# ======================================
+# Virtual Environments
+# ======================================
+.venv/
+venv/
+ENV/
+env/
+.envrc
+.conda/
+
+# Poetry / Pipenv
+poetry.lock
+Pipfile.lock
+
+# ======================================
+# FastAPI / Uvicorn / Gunicorn
+# ======================================
+# Logs
+*.log
+*.log.*
+uvicorn.log
+gunicorn.log
+
+# PIDs
+*.pid
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+*.hypothesis/
+
+# ======================================
+# Environment & Secrets
+# ======================================
+.env
+.env.*
+!.env.example
+
+# Secrets
+*.pem
+*.key
+*.crt
+*.der
+
+# ======================================
+# Databases & Storage
+# ======================================
+*.db
+*.sqlite3
+*.sqlite
+*.db-journal
+
+# Alembic migration cache
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+alembic.ini.bak
+
+# ======================================
+# Build / Distribution
+# ======================================
+build/
+dist/
+*.egg-info/
+.eggs/
+MANIFEST
+
+# Wheel / Packaging
+*.whl
+
+# ======================================
+# IDEs / Editors
+# ======================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+
+# JetBrains
+*.iml
+out/
+
+# ======================================
+# Docker
+# ======================================
+.dockerignore
+docker-compose.override.yml
+docker-compose.override.*.yml
+
+# Volumes
+data/
+tmp/
+
+# ======================================
+# Testing
+# ======================================
+.pytest_cache/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# ======================================
+# Misc
+# ======================================
+*.ipynb_checkpoints
+.DS_Store
+Thumbs.db

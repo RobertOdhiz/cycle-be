@@ -1,0 +1,296 @@
+{
+  "info": {
+    "name": "Cycle API",
+    "description": "API collection for Cycle bicycle rental platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+              "value": "http://192.168.100.6:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"TestPass123!\",\n  \"name\": \"Test User\",\n  \"phone\": \"+254700000000\",\n  \"school\": \"Test University\",\n  \"year\": \"2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"TestPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('access_token', response.data.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bikes",
+      "item": [
+        {
+          "name": "List Bikes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/bikes",
+              "host": ["{{base_url}}"],
+              "path": ["bikes"]
+            }
+          }
+        },
+        {
+          "name": "Create Bike",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"standard\",\n  \"condition\": \"A\",\n  \"hourly_rate\": 60,\n  \"dock_id\": null,\n  \"photos\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/owner/bikes",
+              "host": ["{{base_url}}"],
+              "path": ["owner", "bikes"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rentals",
+      "item": [
+        {
+          "name": "Start Ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_rental_id\": \"client-uuid-123\",\n  \"bike_id\": \"bike-uuid-here\",\n  \"user_id\": \"user-uuid-here\",\n  \"start_at\": \"2024-01-01T10:00:00Z\",\n  \"minute_rate_snapshot\": 1.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rides/start",
+              "host": ["{{base_url}}"],
+              "path": ["rides", "start"]
+            }
+          }
+        },
+        {
+          "name": "End Ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_rental_id\": \"client-uuid-123\",\n  \"end_at\": \"2024-01-01T11:00:00Z\",\n  \"minutes_client\": 60,\n  \"end_dock_id\": null,\n  \"path_sample\": []\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/rides/end",
+              "host": ["{{base_url}}"],
+              "path": ["rides", "end"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "M-Pesa STK Push",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rental_id\": \"rental-uuid-here\",\n  \"phone\": \"+254700000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/payments/mpesa/stk",
+              "host": ["{{base_url}}"],
+              "path": ["payments", "mpesa", "stk"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get DAU",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/admin/analytics/dau",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "analytics", "dau"]
+            }
+          }
+        },
+        {
+          "name": "Update User Policy",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"owner_max_bikes\": 3\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/user-uuid-here/policy",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "user-uuid-here", "policy"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync",
+      "item": [
+        {
+          "name": "Sync Events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"events\": [\n    {\n      \"user_id\": \"user-uuid\",\n      \"bike_id\": \"bike-uuid\",\n      \"event_type\": \"unlock\",\n      \"properties\": {\"method\": \"qr\"},\n      \"occurred_at\": \"2024-01-01T10:00:00Z\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sync/events",
+              "host": ["{{base_url}}"],
+              "path": ["sync", "events"]
+            }
+          }
+        },
+        {
+          "name": "Register Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expo_push_token\": \"ExponentPushToken[...]\",\n  \"platform\": \"android\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sync/devices",
+              "host": ["{{base_url}}"],
+              "path": ["sync", "devices"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
