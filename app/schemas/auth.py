@@ -57,3 +57,10 @@ class UserProfile(BaseModel):
     owner_max_bikes: int
     created_at: str
     updated_at: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
