@@ -62,22 +62,6 @@ def send_verification_email(email: str, user_id: str) -> bool:
         </html>
         """
         
-        # Plain text version
-        text_body = f"""
-        Welcome to Cycle!
-        
-        Please verify your email address by clicking the link below:
-        {verification_link}
-        
-        This link will expire in 24 hours.
-        
-        If you didn't create this account, please ignore this email.
-        
-        Best regards,
-        The Cycle Team
-        """
-        
-        msg.attach(MIMEText(text_body, 'plain'))
         msg.attach(MIMEText(html_body, 'html'))
         
         # Send email
@@ -157,25 +141,6 @@ def send_password_reset_email(email: str, reset_token: str) -> bool:
         </html>
         """
         
-        # Plain text version
-        text_body = f"""
-        Hello,
-        
-        You requested to reset your password for your Cycle account. 
-        Click the link below to reset your password:
-        
-        {reset_url}
-        
-        This link will expire in 1 hour.
-        
-        If you didn't request this password reset, please ignore this email.
-        Your account remains secure.
-        
-        Best regards,
-        The Cycle Team
-        """
-        
-        msg.attach(MIMEText(text_body, 'plain'))
         msg.attach(MIMEText(html_body, 'html'))
         
         # Send email

@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 from app.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.auth.jwt import verify_token
 
 security = HTTPBearer()
@@ -52,7 +52,7 @@ async def get_current_admin_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """Get current admin user"""
-    if current_user.verified_status != "verified":
+    if current_user.role not in {UserRole.admin, UserRole.staff}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

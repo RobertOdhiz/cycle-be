@@ -3,6 +3,8 @@ from sqlmodel import Session, select
 from app.database import get_db
 from app.models.user import User
 from app.models.dock import Dock
+from app.models.event import Event
+from app.services.events import track_event
 from app.auth import get_current_admin_user
 from app.schemas.common import ResponseModel
 from fastapi import Query
@@ -53,6 +55,9 @@ async def create_dock(
     
     db.add(dock)
     db.commit()
+    db.refresh(dock)
+    # Emit dock event
+    track_event(db, user_id=current_user.id, event_type="dock_created", properties={"dock_id": str(dock.id), "name": dock.name})
     
     return ResponseModel(
         success=True,
@@ -99,6 +104,8 @@ async def update_dock(
     dock = db.get(Dock, dock_id)
     dock.name = dock.name
     db.commit()
+    # Emit dock event
+    track_event(db, event_type="dock_updated", properties={"dock_id": str(dock_id)})
     return ResponseModel(
         success=True,
         message="Dock updated successfully"
@@ -113,6 +120,8 @@ async def delete_dock(
     dock = db.get(Dock, dock_id)
     db.delete(dock)
     db.commit()
+    # Emit dock event
+    track_event(db, event_type="dock_deleted", properties={"dock_id": str(dock_id)})
     return ResponseModel(
         success=True,
         message="Dock deleted successfully"

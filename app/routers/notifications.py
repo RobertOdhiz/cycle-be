@@ -13,16 +13,28 @@ router = APIRouter()
 
 @router.post("/send", response_model=ResponseModel)
 async def send_notification(
-    user_ids: list[str],
-    channel: str,
-    title: str,
-    body: str,
-    data: dict = None,
+    user_ids: list[str] | None = None,
+    channel: str = "push",
+    title: str = "",
+    body: str = "",
+    data: dict | None = None,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = None
 ):
     """Send notification to users (admin only)"""
+    if not title or not body:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Title and body are required")
+
+    valid_channels = {"push", "email", "sms"}
+    if channel not in valid_channels:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid channel")
+
+    # If no recipients provided, send to all users
+    if not user_ids or len(user_ids) == 0:
+        all_ids = db.exec(select(User.id)).all()
+        user_ids = [str(u[0] if isinstance(u, tuple) else u) for u in all_ids]
+
     # Create notification records
     notifications = []
     for user_id in user_ids:
@@ -31,7 +43,7 @@ async def send_notification(
             channel=channel,
             title=title,
             body=body,
-            data=data
+            data=data or {}
         )
         notifications.append(notification)
     
@@ -39,14 +51,8 @@ async def send_notification(
     db.commit()
     
     # Enqueue background task for sending
-    if background_tasks:
-        background_tasks.add_task(
-            send_push_notification.delay,
-            user_ids,
-            title,
-            body,
-            data
-        )
+    if background_tasks and channel == "push":
+        background_tasks.add_task(send_push_notification.delay, user_ids, title, body, data or {})
     
     return ResponseModel(
         success=True,

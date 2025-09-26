@@ -65,7 +65,7 @@ async def create_bike(
 ):
     """Create a new bike (owner only)"""
     # Check if user can own more bikes
-    current_bikes = db.exec(select(Bike).where(Bike.owner_id == current_user.id)).count()
+    current_bikes = len(db.exec(select(Bike).where(Bike.owner_id == current_user.id)).all())
     if current_bikes >= current_user.owner_max_bikes:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

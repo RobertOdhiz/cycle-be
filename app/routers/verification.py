@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlmodel import Session, select
 from app.database import get_db
 from app.models.user import User
-from app.models.verification_doc import VerificationDoc
+from app.models.verification_doc import VerificationDoc, VerificationStatus
 from app.auth import get_current_user, get_current_admin_user
 from app.schemas.common import ResponseModel
 from app.services.events import track_event
@@ -183,3 +183,63 @@ async def approve_verification(
         success=True,
         message=f"Verification {status}"
     )
+
+
+@router.get("/admin/docs", response_model=ResponseModel)
+async def list_verification_docs(
+    status_filter: str = None,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """List verification documents for admin review."""
+    query = select(VerificationDoc)
+    if status_filter in {s.value for s in VerificationStatus}:
+        query = query.where(VerificationDoc.status == VerificationStatus(status_filter))
+    docs = db.exec(query.order_by(VerificationDoc.submitted_at.desc())).all()
+    data = [
+        {
+            "id": str(doc.id),
+            "user_id": str(doc.user_id),
+            "cloudinary_url": doc.cloudinary_url,
+            "status": doc.status.value,
+            "submitted_at": doc.submitted_at.isoformat(),
+            "reviewed_by": str(doc.reviewed_by) if doc.reviewed_by else None,
+            "reviewed_at": doc.reviewed_at.isoformat() if doc.reviewed_at else None,
+            "notes": doc.notes,
+        }
+        for doc in docs
+    ]
+    return ResponseModel(success=True, data={"docs": data})
+
+
+@router.patch("/admin/batch", response_model=ResponseModel)
+async def batch_verify(
+    user_ids: list[str],
+    approve: bool = True,
+    notes: str = None,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Batch approve or reject verification for given user IDs."""
+    if not user_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No user IDs provided")
+    target_status = "approved" if approve else "rejected"
+
+    updated = 0
+    for uid in user_ids:
+        user = db.exec(select(User).where(User.id == uid)).first()
+        if not user:
+            continue
+        user.verified_status = target_status
+        db.add(user)
+        doc = db.exec(select(VerificationDoc).where(VerificationDoc.user_id == uid)).first()
+        if doc:
+            doc.status = VerificationStatus.APPROVED if approve else VerificationStatus.REJECTED
+            doc.reviewed_by = current_user.id
+            doc.reviewed_at = datetime.utcnow()
+            doc.notes = notes
+            db.add(doc)
+        updated += 1
+
+    db.commit()
+    return ResponseModel(success=True, message=f"Batch {target_status} completed", data={"updated": updated})

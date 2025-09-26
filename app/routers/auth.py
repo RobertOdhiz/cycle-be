@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlmodel import Session, select
 from app.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.event import Event
 from app.auth import (
     get_password_hash, 
@@ -112,7 +112,8 @@ async def login(
                 "id": str(user.id),
                 "email": user.email,
                 "verified_status": user.verified_status,
-                "eco_points": user.eco_points
+                "eco_points": user.eco_points,
+                "role": user.role,
             }
         )
     )

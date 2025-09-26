@@ -13,6 +13,12 @@ class VerificationStatus(str, Enum):
     verified = "verified"
     rejected = "rejected"
 
+
+class UserRole(str, Enum):
+    user = "user"
+    staff = "staff"
+    admin = "admin"
+
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
@@ -35,7 +41,18 @@ class User(SQLModel, table=True):
         default=VerificationStatus.unverified
     )
 
+    reset_token: Optional[str] = Field(default=None, nullable=True)
+    reset_token_expires: Optional[datetime] = Field(default=None, nullable=True)
+
     eco_points: int = Field(default=0, nullable=False)
     owner_max_bikes: int = Field(default=1, nullable=False)
+    role: UserRole = Field(
+        sa_column=Column(
+            SQLEnum(UserRole, name="userrole_enum"),
+            nullable=False,
+            server_default=UserRole.user.value,
+        ),
+        default=UserRole.user,
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
