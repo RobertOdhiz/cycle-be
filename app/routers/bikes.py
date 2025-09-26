@@ -15,6 +15,7 @@ from app.schemas.bike import (
 from app.schemas.common import ResponseModel
 from app.services.events import track_event
 from app.services.cloudinary_service import cloudinary_service
+from sqlalchemy import func
 
 router = APIRouter()
 
