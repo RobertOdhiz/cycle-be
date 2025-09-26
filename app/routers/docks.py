@@ -84,6 +84,8 @@ async def get_dock_by_id(
         success=True,
         data=dock)
 
+from geoalchemy2.shape import to_shape
+
 @router.get("/find/nearby", response_model=ResponseModel)
 async def get_docks_nearby(
     latitude: float = Query(..., description="Latitude coordinate"),
@@ -91,18 +93,15 @@ async def get_docks_nearby(
     radius: float = Query(1.0, description="Search radius in kilometers"),
     db: Session = Depends(get_db)
 ):
-    """Get docks nearby using spatial query"""
     if radius <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Radius must be a positive number"
         )
     
-    # Convert radius from kilometers to meters
     radius_meters = radius * 1000
     user_point = func.ST_GeogFromText(f'POINT({longitude} {latitude})')
     
-    # Get docks within radius with distance calculation
     nearby_docks_query = (
         select(
             Dock,
@@ -113,8 +112,7 @@ async def get_docks_nearby(
     )
     
     nearby_docks = db.exec(nearby_docks_query).all()
-    
-    # If no docks found nearby, get up to 10 random docks
+
     if not nearby_docks:
         fallback_docks = db.exec(
             select(Dock)
@@ -122,14 +120,20 @@ async def get_docks_nearby(
             .limit(10)
         ).all()
         
-        dock_results = [
-            {
-                **dock.__dict__,
+        dock_results = []
+        for dock in fallback_docks:
+            point = to_shape(dock.geom)  # convert WKB to shapely Point
+            dock_results.append({
+                "id": str(dock.id),
+                "name": dock.name,
+                "availableBikes": dock.available_count,
+                "location": {
+                    "latitude": point.y,
+                    "longitude": point.x
+                },
                 "distance_meters": None,
-                "fallback": True  # Flag to indicate these are fallback results
-            }
-            for dock in fallback_docks
-        ]
+                "fallback": True
+            })
         
         return ResponseModel(
             success=True,
@@ -140,24 +144,22 @@ async def get_docks_nearby(
                 "message": "No docks found nearby. Showing random docks instead."
             }
         )
-    
-    # Format nearby docks with distance info
+
     dock_results = []
     for dock, distance in nearby_docks:
-        dock_data = {
+        point = to_shape(dock.geom)  # convert WKB to shapely Point
+        dock_results.append({
             "id": str(dock.id),
             "name": dock.name,
-            "capacity": dock.capacity,
-            "available_count": dock.available_count,
-            "geom": dock.geom,
-            "address": dock.address,
-            "created_at": dock.created_at,
-            "updated_at": dock.updated_at,
+            "availableBikes": dock.available_count,
+            "location": {
+                "latitude": point.y,
+                "longitude": point.x
+            },
             "distance_meters": round(distance, 2),
             "fallback": False
-        }
-        dock_results.append(dock_data)
-    
+        })
+
     return ResponseModel(
         success=True,
         data={
