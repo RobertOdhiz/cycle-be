@@ -17,6 +17,8 @@ from app.services.events import track_event
 from app.services.cloudinary_service import cloudinary_service
 from sqlalchemy import func
 
+from app.models.dock import Dock
+
 router = APIRouter()
 
 
