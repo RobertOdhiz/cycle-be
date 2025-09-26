@@ -8,6 +8,7 @@ from app.services.events import track_event
 from app.auth import get_current_admin_user
 from app.schemas.common import ResponseModel
 from fastapi import Query
+from geoalchemy2 import WKTElement
 
 router = APIRouter()
 
@@ -47,21 +48,27 @@ async def create_dock(
     db: Session = Depends(get_db)
 ):
     """Create a new dock (admin only)"""
-    # TODO: Implement PostGIS geometry creation
+    # Create a point geometry from lat/lng
+    point = WKTElement(f'POINT({lng} {lat})', srid=4326)
+    
     dock = Dock(
         name=name,
-        capacity=capacity
+        geom=point,  # This was missing!
+        capacity=capacity,
+        available_count=0  # Default to 0 available bikes
     )
     
     db.add(dock)
     db.commit()
     db.refresh(dock)
+    
     # Emit dock event
     track_event(db, user_id=current_user.id, event_type="dock_created", properties={"dock_id": str(dock.id), "name": dock.name})
     
     return ResponseModel(
         success=True,
-        message="Dock created successfully"
+        message="Dock created successfully",
+        data={"dock_id": str(dock.id)}
     )
 
 
@@ -97,15 +104,30 @@ async def get_docks_nearby(
 @router.patch("/{dock_id}", response_model=ResponseModel)
 async def update_dock(
     dock_id: str,
-    dock: Dock,
+    dock_data: dict,  # Should be a Pydantic model instead of Dock instance
+    current_user: User = Depends(get_current_admin_user),  # Add admin protection
     db: Session = Depends(get_db)
 ):
-    """Update a dock"""
+    """Update a dock (admin only)"""
     dock = db.get(Dock, dock_id)
-    dock.name = dock.name
+    if not dock:
+        raise HTTPException(status_code=404, detail="Dock not found")
+    
+    # Update fields if provided
+    if 'name' in dock_data:
+        dock.name = dock_data['name']
+    if 'capacity' in dock_data:
+        dock.capacity = dock_data['capacity']
+    if 'lat' in dock_data and 'lng' in dock_data:
+        # Update geometry if coordinates provided
+        point = WKTElement(f'POINT({dock_data["lng"]} {dock_data["lat"]})', srid=4326)
+        dock.geom = point
+    
     db.commit()
-    # Emit dock event
-    track_event(db, event_type="dock_updated", properties={"dock_id": str(dock_id)})
+    db.refresh(dock)
+    
+    track_event(db, user_id=current_user.id, event_type="dock_updated", properties={"dock_id": str(dock_id)})
+    
     return ResponseModel(
         success=True,
         message="Dock updated successfully"
