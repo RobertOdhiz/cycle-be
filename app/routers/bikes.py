@@ -326,28 +326,79 @@ async def get_bikes_nearby(
     radius: float = Query(1.0, description="Search radius in kilometers"),
     db: Session = Depends(get_db)
 ):
-    """Get bikes nearby"""
+    """Get bikes nearby using spatial query"""
     if radius <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Radius must be a positive number"
         )
-    bikes = db.exec(select(Bike).where(Bike.geom.distance(latitude, longitude) <= radius)).all()
+    
+    # Convert radius from kilometers to meters
+    radius_meters = radius * 1000
+    user_point = func.ST_GeogFromText(f'POINT({longitude} {latitude})')
+    
+    # Find bikes within radius by joining with docks table
+    nearby_bikes_query = (
+        select(Bike)
+        .join(Dock, Bike.dock_id == Dock.id)
+        .where(func.ST_DWithin(Dock.geom, user_point, radius_meters))
+        .where(Bike.status == BikeStatus.available)
+    )
+    
+    nearby_bikes = db.exec(nearby_bikes_query).all()
+    
+    # If no bikes found nearby, get up to 10 random available bikes
+    if not nearby_bikes:
+        fallback_bikes = db.exec(
+            select(Bike)
+            .where(Bike.status == BikeStatus.available)
+            .order_by(func.random())
+            .limit(10)
+        ).all()
+        
+        bike_list = [BikeResponse(
+            id=str(bike.id),
+            owner_id=str(bike.owner_id),
+            type=bike.type,
+            condition=bike.condition,
+            hourly_rate=bike.hourly_rate,
+            dock_id=str(bike.dock_id) if bike.dock_id else None,
+            status=bike.status,
+            photos=bike.photos,
+            created_at=bike.created_at.isoformat(),
+            updated_at=bike.updated_at.isoformat()
+        ) for bike in fallback_bikes]
+        
+        return ResponseModel(
+            success=True,
+            data=BikeListResponse(
+                bikes=bike_list,
+                count=len(bike_list),
+                fallback_used=True,
+                message="No bikes found nearby. Showing random available bikes instead."
+            )
+        )
+    
+    # Format nearby bikes
+    bike_list = [BikeResponse(
+        id=str(bike.id),
+        owner_id=str(bike.owner_id),
+        type=bike.type,
+        condition=bike.condition,
+        hourly_rate=bike.hourly_rate,
+        dock_id=str(bike.dock_id) if bike.dock_id else None,
+        status=bike.status,
+        photos=bike.photos,
+        created_at=bike.created_at.isoformat(),
+        updated_at=bike.updated_at.isoformat()
+    ) for bike in nearby_bikes]
+    
     return ResponseModel(
         success=True,
         data=BikeListResponse(
-            bikes=[BikeResponse(
-                id=bike.id,
-                owner_id=bike.owner_id,
-                type=bike.type,
-                condition=bike.condition,
-                hourly_rate=bike.hourly_rate,
-                dock_id=bike.dock_id,
-                status=bike.status,
-                photos=bike.photos,
-                created_at=bike.created_at.isoformat(),
-                updated_at=bike.updated_at.isoformat()
-            ) for bike in bikes]
+            bikes=bike_list,
+            count=len(bike_list),
+            fallback_used=False
         )
     )
 

@@ -9,6 +9,7 @@ from app.auth import get_current_admin_user
 from app.schemas.common import ResponseModel
 from fastapi import Query
 from geoalchemy2 import WKTElement
+from sqlalchemy import func
 
 router = APIRouter()
 
@@ -90,16 +91,81 @@ async def get_docks_nearby(
     radius: float = Query(1.0, description="Search radius in kilometers"),
     db: Session = Depends(get_db)
 ):
-    """Get docks nearby"""
+    """Get docks nearby using spatial query"""
     if radius <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Radius must be a positive number"
         )
-    docks = db.exec(select(Dock).where(Dock.geom.distance(latitude, longitude) <= radius)).all()
+    
+    # Convert radius from kilometers to meters
+    radius_meters = radius * 1000
+    user_point = func.ST_GeogFromText(f'POINT({longitude} {latitude})')
+    
+    # Get docks within radius with distance calculation
+    nearby_docks_query = (
+        select(
+            Dock,
+            func.ST_Distance(Dock.geom, user_point).label('distance')
+        )
+        .where(func.ST_DWithin(Dock.geom, user_point, radius_meters))
+        .order_by('distance')
+    )
+    
+    nearby_docks = db.exec(nearby_docks_query).all()
+    
+    # If no docks found nearby, get up to 10 random docks
+    if not nearby_docks:
+        fallback_docks = db.exec(
+            select(Dock)
+            .order_by(func.random())
+            .limit(10)
+        ).all()
+        
+        dock_results = [
+            {
+                **dock.__dict__,
+                "distance_meters": None,
+                "fallback": True  # Flag to indicate these are fallback results
+            }
+            for dock in fallback_docks
+        ]
+        
+        return ResponseModel(
+            success=True,
+            data={
+                "docks": dock_results,
+                "count": len(dock_results),
+                "fallback_used": True,
+                "message": "No docks found nearby. Showing random docks instead."
+            }
+        )
+    
+    # Format nearby docks with distance info
+    dock_results = []
+    for dock, distance in nearby_docks:
+        dock_data = {
+            "id": str(dock.id),
+            "name": dock.name,
+            "capacity": dock.capacity,
+            "available_count": dock.available_count,
+            "geom": dock.geom,
+            "address": dock.address,
+            "created_at": dock.created_at,
+            "updated_at": dock.updated_at,
+            "distance_meters": round(distance, 2),
+            "fallback": False
+        }
+        dock_results.append(dock_data)
+    
     return ResponseModel(
         success=True,
-        data=docks)
+        data={
+            "docks": dock_results,
+            "count": len(dock_results),
+            "fallback_used": False
+        }
+    )
 
 @router.patch("/{dock_id}", response_model=ResponseModel)
 async def update_dock(
